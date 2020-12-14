@@ -1,0 +1,12 @@
+* - Copy*.c
+* - Copy*.cpp
+* - Copy*.pde
+*.autosave
+*.orig
+*.zip
+*~
+_*
+build/
+discards*
+sdkconfig
+~$*
