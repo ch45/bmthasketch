@@ -11,25 +11,65 @@ final int textColour = 32;
 
 Serial myPort;
 MyThread thread;
+PImage backgroundImg;
 
-void setup() {
-  size(640, 480);
+void settings() {
+  PImage img = loadImage("DrawingMachineTop.png");
+  if (img != null) {
+    size(img.width, img.height);
+    backgroundImg = img;
+  } else {
+    size(640, 480);
+  }
+}
+
+void setup(){
+  println(String.format("Background Image width=%d, height=%d", width, height));
+
   frameRate(FPS);
   background(backgroundColour);
 
   String[] arrPorts = Serial.list();
-  // printArray(arrPorts);
-  String portName = arrPorts[2]; // COM4
-  println("portName = " + portName);
-  myPort = new Serial(this, portName, BAUD);
+  if (arrPorts.length > 2) {
+    String portName = arrPorts[2]; // COM4
+    println("portName = " + portName);
+    myPort = new Serial(this, portName, BAUD);
 
-  thread = new MyThread();
-  thread.start();
+    thread = new MyThread();
+    thread.start();
+  } else {
+    println("Didn't find the serial port that the compiled sketch expects!");
+    printArray(arrPorts);
+  }
 }
 
 int lastX = -1;
 int lastY = -1;
 void draw() {
+  drawBackgroundImage();
+  drawReceivedData();
+  if (true) {
+    noStroke();
+    fill(backgroundColour);
+    rect(5, 5, 50, 15);
+    fill(textColour);
+    textSize(12);
+    text(String.format("%5.1f fps", frameRate), 5, 15);
+  }
+}
+
+void drawBackgroundImage() {
+  if (backgroundImg == null) {
+    return;
+  }
+
+  image(backgroundImg, 0, 0);
+}
+
+void drawReceivedData() {
+  if (myPort == null) {
+    return;
+  }
 
   while (myPort.available() > 0) {
     // TODO consider yet another thread as the read may take 1/400th second
@@ -50,15 +90,6 @@ void draw() {
         lastY = action.y;
       }
     }
-  }
-
-  if (true) {
-    noStroke();
-    fill(backgroundColour);
-    rect(5, 5, 50, 15);
-    fill(textColour);
-    textSize(12);
-    text(String.format("%5.1f fps", frameRate), 5, 15);
   }
 }
 
