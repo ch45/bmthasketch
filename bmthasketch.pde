@@ -12,6 +12,14 @@ final int textColour = 32;
 Serial myPort;
 MyThread thread;
 PImage backgroundImg;
+PImage horizontalCarriageImg;
+PImage horizontalFillImg;
+PImage penHeadImg;
+PImage penFillImg;
+PGraphics paperFinal; // TODO vs paperDraft that may be the actual mouse x,y as a before the data goes off to the ESP32
+int horizontalCarriageOffset;
+int horizontalFillHeight;
+int penHeadOffset;
 
 void settings() {
   PImage img = loadImage("DrawingMachineTop.png");
@@ -23,9 +31,27 @@ void settings() {
   }
 }
 
-void setup(){
-  println(String.format("Background Image width=%d, height=%d", width, height));
+// todo cut out - drawing bed
 
+int[][] parts = {
+  {67, 334, 1019, 226}, // horizontal carriage
+  {67, 524, 1019, 376}, // horizontal fill
+  {492, 372, 578, 226}, // pen head
+  {592, 372, 678, 226}, // pen fill
+};
+int penOffsetX = -32; //  -38;
+int penOffsetY = -122; // -108;
+int paperOffsetX = 210;
+int paperOffsetY = 230;
+int paperWidth = 638;
+int paperHeight = 478;
+color penColour = #00FF00;
+
+void setup(){
+  println(String.format("size width=%d, height=%d", width, height));
+
+  createPlotterPieces(parts);
+  
   frameRate(FPS);
   background(backgroundColour);
 
@@ -35,6 +61,7 @@ void setup(){
     println("portName = " + portName);
     myPort = new Serial(this, portName, BAUD);
 
+    paperFinal = createGraphics(paperWidth, paperHeight);
     thread = new MyThread();
     thread.start();
   } else {
@@ -58,18 +85,85 @@ void draw() {
   }
 }
 
+void createPlotterPieces(int[][] data) {
+  int count = 0;
+  for (int[] coords : data) {
+    int sx = min(coords[0], coords[2]);
+    int sy = min(coords[1], coords[3]);
+    int sw = abs(coords[0] - coords[2]);
+    int sh = abs(coords[1] - coords[3]);
+    
+    println(String.format("sx,sy %d,%d sw,sh %d,%d", sx, sy, sw, sh));
+
+    switch(count++) {
+    case 0:
+      horizontalCarriageImg = createImage(sw, sh, RGB);
+      horizontalCarriageImg.copy(backgroundImg, sx, sy, sw, sh, 0, 0, sw, sh);
+      horizontalCarriageOffset = sx;
+      horizontalFillHeight = sy;
+      break;
+    case 1:
+      horizontalFillImg = createImage(sw, sh, RGB);
+      horizontalFillImg.copy(backgroundImg, sx, sy, sw, sh, 0, 0, sw, sh);
+      break;
+    case 2:
+      penHeadImg = createImage(sw, sh, RGB);
+      penHeadImg.copy(backgroundImg, sx, sy, sw, sh, 0, 0, sw, sh);
+      penHeadOffset = sx;
+      break;
+    case 3:
+      penFillImg = createImage(sw, sh, RGB);
+      penFillImg.copy(backgroundImg, sx, sy, sw, sh, 0, 0, sw, sh);
+      break;
+    default:
+      // Nothing
+      break;
+    }
+  }
+}
+
 void drawBackgroundImage() {
   if (backgroundImg == null) {
     return;
   }
 
   image(backgroundImg, 0, 0);
+  image(horizontalFillImg, horizontalCarriageOffset, horizontalFillHeight);
+  image(horizontalCarriageImg, horizontalCarriageOffset, mouseY + penOffsetY);
+  image(penFillImg, penHeadOffset, mouseY + penOffsetY);
+  image(penHeadImg, mouseX + penOffsetX, mouseY + penOffsetY);
+  
+  // switch((frameCount / 120) % 5) {
+  // case 0:
+  // default:
+  //   image(backgroundImg, 0, 0);
+  //   break;
+  // case 1:
+  //   image(horizontalCarriageImg, horizontalCarriageOffset, 0);
+  //   break;
+  // case 2:
+  //   image(horizontalFillImg, horizontalCarriageOffset, horizontalFillHeight);
+  //   break;
+  // case 3:
+  //   image(penHeadImg, horizontalCarriageOffset, 0);
+  //   break;
+  // case 4:
+  //   image(penFillImg, horizontalCarriageOffset, 0);
+  //   break;
+  // }
 }
 
 void drawReceivedData() {
   if (myPort == null) {
     return;
   }
+
+  paperFinal.beginDraw();
+  paperFinal.stroke(penColour);
+
+  // guide
+  // paperFinal.stroke(204, 102, 0);
+  // paperFinal.rect(0, 0, paperWidth - 1, paperHeight - 1);
 
   while (myPort.available() > 0) {
     // TODO consider yet another thread as the read may take 1/400th second
@@ -82,8 +176,8 @@ void drawReceivedData() {
         println(String.format("action penDown=%b, x=%d, y=%d", action.penDown, action.x, action.y));
 
         if (action.penDown) {
-          stroke(0);
-          line(lastX, lastY, action.x, action.y);
+          // TODO paperFinal
+            paperFinal.line(lastX - paperOffsetX, lastY - paperOffsetY, action.x - paperOffsetX, action.y - paperOffsetY);
         }
 
         lastX = action.x;
@@ -91,6 +185,9 @@ void drawReceivedData() {
       }
     }
   }
+
+  paperFinal.endDraw();
+  image(paperFinal, paperOffsetX, paperOffsetY);
 }
 
 String validateRxMessage(String data, String prefix) {
