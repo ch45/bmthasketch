@@ -13,7 +13,7 @@
 void chip_info();
 
 static const int SEND_FREQ_MS = 250;
-static const int READ_WAIT_MS = 250;
+static const int READ_WAIT_MS = 110;
 static const int RX_BUF_SIZE = 1024;
 
 #define TXD_PIN (GPIO_NUM_1) /* TXD0 GPIO1 */
@@ -59,7 +59,7 @@ int sendData(const char* logName, std::deque<std::string> &deck)
     }
 
     if (packetsTried > 0) {
-        ESP_LOGI(logName, "Wrote %d packets %d total bytes", packetsTried, totalBytes);   
+        ESP_LOGI(logName, "Wrote %d packets %d total bytes", packetsTried, totalBytes);
     }
     return totalBytes;
 }
@@ -125,7 +125,7 @@ extern "C" void app_main()
 }
 
 void chip_info()
- {
+{
     /* Print chip information */
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
