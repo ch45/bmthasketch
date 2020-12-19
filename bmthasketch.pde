@@ -35,12 +35,13 @@ void settings() {
   }
 }
 
+// x1, y1, x2, y2, origin bottom left
 int[][] parts = {
-  {67, 334, 1019, 226}, // horizontal carriage
-  {67, 524, 1019, 376}, // horizontal fill
-  {492, 372, 578, 226}, // pen head
-  {592, 372, 678, 226}, // pen fill
-  {210, 230, 848, 708}  // drawing bed
+  {67, 558, 1019, 666}, // horizontal carriage
+  {67, 368, 1019, 516}, // horizontal fill
+  {492, 520, 578, 666}, // pen head
+  {592, 520, 678, 666}, // pen fill
+  {210, 662, 848, 184}  // drawing bed
 };
 int penOffsetX = -32; //  -38;
 int penOffsetY = -122; // -108;
@@ -96,26 +97,26 @@ void createPlotterPieces(int[][] data) {
     switch(count++) {
     case 0:
       horizontalCarriageOffset = sx;
-      horizontalFillHeight = sy;
+      horizontalFillHeight = height - (sy + sh);
       horizontalCarriageImg = createImage(sw, sh, RGB);
       horizontalCarriageImg.copy(backgroundImg, horizontalCarriageOffset, horizontalFillHeight, sw, sh, 0, 0, sw, sh);
       break;
     case 1:
       horizontalFillImg = createImage(sw, sh, RGB);
-      horizontalFillImg.copy(backgroundImg, sx, sy, sw, sh, 0, 0, sw, sh);
+      horizontalFillImg.copy(backgroundImg, sx, height - (sy + sh), sw, sh, 0, 0, sw, sh);
       break;
     case 2:
       penHeadOffset = sx;
       penHeadImg = createImage(sw, sh, RGB);
-      penHeadImg.copy(backgroundImg, penHeadOffset, sy, sw, sh, 0, 0, sw, sh);
+      penHeadImg.copy(backgroundImg, penHeadOffset, height - (sy + sh), sw, sh, 0, 0, sw, sh);
       break;
     case 3:
       penFillImg = createImage(sw, sh, RGB);
-      penFillImg.copy(backgroundImg, sx, sy, sw, sh, 0, 0, sw, sh);
+      penFillImg.copy(backgroundImg, sx, height - (sy + sh), sw, sh, 0, 0, sw, sh);
       break;
     case 4:
       paperOffsetX = sx;
-      paperOffsetY = sy;
+      paperOffsetY = height - (sy + sh);
       paperWidth = sw;
       paperHeight = sh;
       paperFinal = createGraphics(paperWidth, paperHeight);
@@ -140,9 +141,6 @@ void drawBackgroundImage() {
 }
 
 void drawReceivedData() {
-  if (myPort == null) {
-    return;
-  }
 
   paperFinal.beginDraw();
 
@@ -151,24 +149,26 @@ void drawReceivedData() {
   // paperFinal.stroke(204, 102, 0);
   // paperFinal.rect(0, 0, paperWidth - 1, paperHeight - 1);
 
-  paperFinal.stroke(penColour);
+  if (myPort != null) {
+    paperFinal.stroke(penColour);
 
-  while (myPort.available() > 0) {
-    // TODO consider yet another thread as the read may take 1/400th second
-    String myString = myPort.readStringUntil(LF);
-    if (myString != null) {
-      String data = validateRxMessage(myString, "RX<-ESP32:");
-      if (data != null) {
-        DrawingAction action = parseData(data);
+    while (myPort.available() > 0) {
+      // TODO consider yet another thread as the read may take 1/400th second
+      String myString = myPort.readStringUntil(LF);
+      if (myString != null) {
+        String data = validateRxMessage(myString, "RX<-ESP32:");
+        if (data != null) {
+          DrawingAction action = parseData(data);
 
-        println(String.format("action penDown=%b, x=%d, y=%d", action.penDown, action.x, action.y));
+          println(String.format("action penDown=%b, x=%d, y=%d", action.penDown, action.x, action.y));
 
-        if (action.penDown) {
-          paperFinal.line(lastX - paperOffsetX, lastY - paperOffsetY, action.x - paperOffsetX, action.y - paperOffsetY);
+          if (action.penDown) {
+            paperFinal.line(lastX - paperOffsetX, paperHeight - lastY, action.x - paperOffsetX, paperHeight - action.y);
+          }
+
+          lastX = action.x;
+          lastY = action.y;
         }
-
-        lastX = action.x;
-        lastY = action.y;
       }
     }
   }
@@ -209,7 +209,7 @@ public class MyThread extends Thread {
   {
     for (;; delay(POLL_FREQ_MS)) {
       int curX = mouseX;
-      int curY = mouseY;
+      int curY = paperHeight - (mouseY - paperOffsetY);
       if (curX != x || curY != y) {
         x = curX;
         y = curY;
