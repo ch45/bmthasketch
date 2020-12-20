@@ -56,8 +56,8 @@ void setup(){
   background(backgroundColour);
 
   String[] arrPorts = Serial.list();
-  if (arrPorts.length > 2) {
-    String portName = arrPorts[2]; // COM4
+  if (arrPorts.length > 0) {
+    String portName = arrPorts[arrPorts.length - 1]; // assume last port
     println("portName = " + portName);
     myPort = new Serial(this, portName, BAUD);
 
@@ -163,7 +163,7 @@ void drawReceivedData() {
           println(String.format("action penDown=%b, x=%d, y=%d", action.penDown, action.x, action.y));
 
           if (action.penDown) {
-            paperFinal.line(lastX - paperOffsetX, paperHeight - lastY, action.x - paperOffsetX, paperHeight - action.y);
+            paperFinal.line(lastX, paperHeight - lastY, action.x, paperHeight - action.y);
           }
 
           lastX = action.x;
@@ -208,7 +208,7 @@ public class MyThread extends Thread {
   public void run()
   {
     for (;; delay(POLL_FREQ_MS)) {
-      int curX = mouseX;
+      int curX = mouseX - paperOffsetX;
       int curY = paperHeight - (mouseY - paperOffsetY);
       if (curX != x || curY != y) {
         x = curX;
